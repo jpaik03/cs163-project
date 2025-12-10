@@ -1,4 +1,3 @@
-*.o
-dnc_ch
-*.svg
 *.txt
+LEDAMakefile
+dnc_ch

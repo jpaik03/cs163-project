@@ -4,71 +4,66 @@
  *      11 December, 2025
  *      Divide & Conquer Convex Hull Algorithm
  *
- *      The main driver for dnc_ch. Uses CGAL for geometry logic. Visual output
- *      will be handled via SVG generation.
+ *      The main driver for dnc_ch. Uses Professor Souvaine's LEDA library
+ *      (en47_vis_txt.h) for geometry and visualization.
  *      TODO: Further description
  */
 
-/* Standard c++ Includes */
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <algorithm>
-
-/* CGAL Includes */
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/point_generators_2.h>
+ /* Standard c++ Includes */
+ #include <iostream>
+ #include <fstream>
+ #include <vector>
+ #include <algorithm>
+ #include <limits>
+ 
+ /* Professor Souvaine's LEDA library */
+ #include "en47_vis_txt.h"
 
 using namespace std;
 
-/* CGAL Typedefs */
-typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
-typedef Kernel::Point_2 Point;
-
 /* Function declarations */
-void readInput(string inputFile, vector<Point> &points);
-void sortPoints(vector<Point> &points);
-void saveToSVG(string outputFile, vector<Point> &points, vector<Point> &hull);
-void printPoints(vector<Point> &points);
+void readInput(string inputFile, vector<my_point> &pts);
+void sortPoints(vector<my_point> &pts);
+void printPoints(vector<my_point> &pts);
+void display(const vector<my_point> &pts, const vector<my_point> &hull);
 
 /* Define constants */
-const double SVG_W = 1491.0;
-const double SVG_H = 803.0;
-const double SVG_M = 50.0;
-
 
 int main(int argc, char *argv[])
 {
-        vector<Point> points;
+        vector<my_point> pts;
         
         if (argc == 2) {
-                readInput(argv[1], points);
+                readInput(argv[1], pts);
         } else {
                 cerr << "Usage: ./dnc_ch inputFile\n";
                 exit(EXIT_FAILURE);
         }
 
         // TODO: Algorithm Implementation
-        sortPoints(points);
+        sortPoints(pts);
 
         cout << "Points:\n";
-        printPoints(points);
-        cout << points.size() << " points read from file.\n";
+        printPoints(pts);
+        cout << pts.size() << " points read from file.\n";
 
         /* Visualization */
-        saveToSVG("output.svg", points, points);
-        cout << "Graph saved to output.svg\n";
+        // TODO: Change second points to hull once I find the hull
+        display(pts, pts);
+        cout << "Click the window to exit." << endl;
+        en47_mouse_wait();
+        en47_close();
 
         return 0;
 }
 
 /******** readInput ********
  *
- * Populates a vector of Points using Points read in from a given file.
+ * Populates a vector of my_points using data from a given file.
  *
  * Parameters:
- *      string inputFile:       Filename of a file containing Points.
- *      vector<Point> &points:  Address to a vector of Points.
+ *      string inputFile:       Filename of a file containing my_points.
+ *      vector<my_point> &pts:  Address to a vector of my_points.
  * Returns:
  *      None.
  * Expects:
@@ -76,7 +71,7 @@ int main(int argc, char *argv[])
  * Notes:
  *      Throws an error if inputFile fails to open.
  ************************/
-void readInput(string inputFile, vector<Point> &points)
+void readInput(string inputFile, vector<my_point> &pts)
 {
         /* Open input file and verify it opened correctly */
         ifstream infile(inputFile);
@@ -86,9 +81,15 @@ void readInput(string inputFile, vector<Point> &points)
         }
 
         /* Read in points */
-        double x, y;
+        int x, y;
+        int id = 0;
+        my_point p;
         while (infile >> x >> y) {
-                points.push_back(Point(x, y));
+                p.x = x;
+                p.y = y;
+                p.ID = id;
+                pts.push_back(p);
+                id++;
         }
 
         infile.close();
@@ -96,11 +97,11 @@ void readInput(string inputFile, vector<Point> &points)
 
 /******** sortPoints ********
  *
- * Sorts a vector of Points by ascending x-coordinate, breaking ties by
+ * Sorts a vector of my_points by ascending x-coordinate, breaking ties by
  * ascending y-coordinate.
  *
  * Parameters:
- *      vector<Point> &points:  Address to a vector of Points.
+ *      vector<my_point> &pts:  Address to a vector of my_points.
  * Returns:
  *      None.
  * Expects:
@@ -108,98 +109,87 @@ void readInput(string inputFile, vector<Point> &points)
  * Notes:
  *      None.
  ************************/
-void sortPoints(vector<Point> &points)
+void sortPoints(vector<my_point> &pts)
 {
-        sort(points.begin(), points.end(), [](const Point& a, const Point& b) {
+        sort(pts.begin(), pts.end(), [](const my_point &a, const my_point &b) {
                 /* Sort by ascending x-coordinate */
-                if (a.x() != b.x()) {
-                        return a.x() < b.x();
+                if (a.x != b.x) {
+                        return a.x < b.x;
                 }
                 /* Break ties by sort by ascending y-coordinate */
-                return a.y() < b.y();
+                return a.y < b.y;
         });
 }
 
-void saveToSVG(string outputFile, vector<Point> &points, vector<Point> &hull)
+/******** display ********
+ *
+ * Uses en47 functions to draw the window, points, and hull.
+ *
+ * Parameters:
+ *      vector<my_point> &pts:  Address to a vector of my_points.
+ *      vector<my_point> &hull: Address to a vector of my_points representing
+ *                              the hull.
+ * Returns:
+ *      None.
+ * Expects:
+ *      None.
+ * Notes:
+ *      None.
+ ************************/
+void display(const vector<my_point> &pts, const vector<my_point> &hull)
 {
-        if (points.empty()) {
+        if (pts.empty()) {
                 return;
         }
 
-        /* Open output file */
-        ofstream svg(outputFile);
-
-        /* Find range of the data */
-        double minX = points[0].x(), maxX = points[0].x();
-        double minY = points[0].y(), maxY = points[0].y();
-
-        Point p;
-        for (unsigned i = 0; i < points.size(); i++) {
-                p = points[i];
-                if (p.x() < minX) {
-                        minX = p.x();
+        /* Calculate window size */
+        int minX = pts[0].x, maxX = pts[0].x;
+        int minY = pts[0].y, maxY = pts[0].y;
+        int mar = 10;
+        my_point p;
+        for (size_t i = 0; i < pts.size(); i++) {
+                p = pts[i];
+                if (p.x < minX) {
+                        minX = p.x;
                 }
-                if (p.x() > maxX) {
-                        maxX = p.x();
+                if (p.x > maxX) {
+                        maxX = p.x;
                 }
-                if (p.y() < minY) {
-                        minY = p.y();      
-                } if (p.y() > maxY) {
-                        maxY = p.y();
+                if (p.y < minY) {
+                        minY = p.y;
+                }
+                if (p.y > maxY) {
+                        maxY = p.y;
                 }
         }
         
-        /* Prevent zero division edge case */
-        double rangeX = maxX - minX;
-        if (rangeX == 0) {
-                rangeX = 1.0;
+        /* Display */
+        en47_display(minX - mar, maxX + mar, minY - mar, maxY + mar);
+        
+        /* Draw input points */
+        for (size_t i = 0; i < pts.size(); i++) {
+                p = pts[i];
+                en47_draw_point(p.x, p.y, BLACK);
         }
-        double rangeY = maxY - minY;
-        if (rangeY == 0) {
-                rangeY = 1.0;
-        }
 
-        double scaleX = (SVG_W - 2 * SVG_M) / rangeX;
-        double scaleY = (SVG_H - 2 * SVG_M) / rangeY;
-
-        /* SVG header */
-        svg << "<svg xmlns=\"http://www.w3.org/2000/svg\" "
-            << "width=\"" << SVG_W << "\" height=\"" << SVG_H
-            << "\" viewBox=\"0 0 " << SVG_W << " " << SVG_H << "\">\n"
-            << "<rect width=\"100%\" height=\"100%\" fill=\"white\"/>\n";
-
-        /* Draw convex hull */
+        /* Draw hull lines */
         if (!hull.empty()) {
-                svg << "<polygon points=\"";
-                for (unsigned i = 0; i < hull.size(); i++) {
-                        // Apply scale
-                        double sx = SVG_M + (hull[i].x() - minX) * scaleX;
-                        double sy = (SVG_H - SVG_M) - (hull[i].y() - minY) * scaleY;
+                for (size_t i = 0; i < hull.size(); i++) {
+                        // Wrap around to connect the last point to the first
+                        const my_point& p1 = hull[i];
+                        const my_point& p2 = hull[(i + 1) % hull.size()];
                         
-                        svg << sx << "," << sy << " ";
+                        en47_draw_segment(p1.x, p1.y, p2.x, p2.y, BLUE);
                 }
-                svg << "\" fill=\"rgba(0,0,255,0.1)\" stroke=\"blue\" stroke-width=\"2\"/>\n";
         }
-
-        /* Draw every point */
-        for (unsigned i = 0; i < points.size(); i++) {
-                double sx = SVG_M + (points[i].x() - minX) * scaleX;
-                double sy = (SVG_H - SVG_M) - (points[i].y() - minY) * scaleY;
-
-                svg << "<circle cx=\"" << sx << "\" cy=\"" << sy 
-                << "\" r=\"3\" fill=\"black\" />\n";
-        }
-
-        svg << "</svg>";
-        svg.close();
 }
 
 /******** printPoints ********
  *
- * Prints every Point in a vector of Points.
+ * Prints every my_point in a vector of my_points.
  *
  * Parameters:
- *      vector<Point> &points:  Address to a vector of Points.
+ *      vector<my_point> &pts:  Address to a vector of my_points.
  * Returns:
  *      None.
  * Expects:
@@ -207,11 +197,11 @@ void saveToSVG(string outputFile, vector<Point> &points, vector<Point> &hull)
  * Notes:
  *      This is for testing purposes only.
  ************************/
-void printPoints(vector<Point> &points)
+void printPoints(vector<my_point> &pts)
 {
-        Point p;
-        for (unsigned i = 0; i < points.size(); i++) {
-                p = points[i];
-                cout << "(" << p.x() << ", " << p.y() << ")\n";
+        my_point p;
+        for (size_t i = 0; i < pts.size(); i++) {
+                p = pts[i];
+                cout << "(" << p.x << ", " << p.y << ")\n";
         }
 }

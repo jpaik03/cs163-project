@@ -9,7 +9,6 @@
 
 Help Received
   - https://cplusplus.com/reference/vector/vector/
-  - https://doc.cgal.org/latest/Convex_hull_2/index.html
   - 
 
 Architecture
@@ -20,3 +19,9 @@ Files
 Testing
 
 What I learned
+
+Usage
+
+Open PuTTY
+Connection > SSH > X11 > Turn on Enable X11 forwarding
+use leda61
