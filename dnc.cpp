@@ -21,21 +21,26 @@ typedef pair<int, int> ptPair;
 
 /* Helper function declarations */
 static void sortPoints(Points &pts);
-static Points solveRecursive(Points &pts);
-static void drawSubHulls(const Points &lHull, const Points &rHull);
+static Points solveRecursive(Points &pts, const Points &allPts,
+                             const vector<Points> &prevHulls);
+static void drawSubHulls(const Points &lHull, const Points &rHull,
+                         const Points &allPts, const vector<Points> &prevHulls);
 static ptPair getUpperBridge(const Points &left, const Points &right);
 static ptPair getLowerBridge(const Points &left, const Points &right);
 static void drawBridgeLine(const my_point &p1, const my_point &p2, int color);
 static Points merge(const Points &lHull, const Points &rHull, 
                          ptPair upper, ptPair lower);
-static void drawMergedHull(const Points &hull);
+static void drawMergedHull(const Points &hull, const Points &allPts,
+                           const vector<Points> &prevHulls);
 static int cross_product(my_point o, my_point a, my_point b);
+static void drawPoints(const Points &pts);
+static void drawAllHulls(const vector<Points> &hulls);
 
 /* Define constants */
 const int WAIT = 10;
 #define SUBHULL BLACK
-#define UPPER GREEN
-#define LOWER ORANGE
+#define SEARCH ORANGE
+#define STORED GREEN
 #define ERASED WHITE
 
 /******** dnc ********
@@ -60,7 +65,8 @@ Points dnc(Points &pts)
                 assert(!pts.empty());
         }
         sortPoints(pts);
-        return solveRecursive(pts);
+        vector<Points> emptyHulls;
+        return solveRecursive(pts, pts, emptyHulls);
 }
 
 /******** sortPoints ********
@@ -95,15 +101,17 @@ static void sortPoints(Points &pts)
  * the set, building sub-hulls, and merging them.
  *
  * Parameters:
- *      Points &pts:    The set of points whose hull will be calculated.
+ *      Points &pts:            The set of points whose hull will be calculated.
+ *      const Points &allPts:   The original set of points.
  * Returns:
  *      A Points object containing the points of the sub-hull.
  * Expects:
  *      pts is sorted by x-coordinate (ties broken by y-coordinate).
  * Notes:
- *      Calls helper functions to merge and viisualize.
+ *      Calls helper functions to merge and visualize.
  ************************/
-static Points solveRecursive(Points &pts)
+static Points solveRecursive(Points &pts, const Points &allPts,
+                             const vector<Points> &prevHulls)
 {
         /* Base (trivial) case: Convex hull of a point is itself */
         if (pts.size() <= 1) {
@@ -116,11 +124,20 @@ static Points solveRecursive(Points &pts)
         Points rPts(pts.begin() + mid, pts.end());
         
         /* Recurse to find convex hull of subsets */
-        Points lHull = solveRecursive(lPts);
-        Points rHull = solveRecursive(rPts);
+        Points lHull = solveRecursive(lPts, allPts, prevHulls);
+        
+        /* Build hull list including left sub-hull for right recursion */
+        vector<Points> withLeftHull = prevHulls;
+        withLeftHull.push_back(lHull);
+        
+        Points rHull = solveRecursive(rPts, allPts, withLeftHull);
+
+        /* Build new hull list including both current sub-hulls */
+        vector<Points> newHulls = withLeftHull;
+        newHulls.push_back(rHull);
 
         /* Display sub-hulls for incremental visualization */
-        drawSubHulls(lHull, rHull);
+        drawSubHulls(lHull, rHull, allPts, newHulls);
 
         /* Merge (conquer) */
         ptPair upper = getUpperBridge(lHull, rHull);
@@ -130,7 +147,7 @@ static Points solveRecursive(Points &pts)
         /* Draw the merged hull */
         en47_wait(WAIT);
         en47_clear();
-        drawMergedHull(merged);
+        drawMergedHull(merged, allPts, newHulls);
         
         return merged;
 }
@@ -142,6 +159,7 @@ static Points solveRecursive(Points &pts)
  * Parameters:
  *      const Points &lHull:    The left sub-hull.
  *      const Points &rHull:    The right sub-hull.
+ *      const Points &allPts:   The original set of points.
  * Returns:
  *      None.
  * Expects:
@@ -149,8 +167,12 @@ static Points solveRecursive(Points &pts)
  * Notes:
  *      Draws sub-hulls in BLACK.
  ************************/
-static void drawSubHulls(const Points &lHull, const Points &rHull)
+static void drawSubHulls(const Points &lHull, const Points &rHull,
+                         const Points &allPts, const vector<Points> &prevHulls)
 {
+        drawPoints(allPts);
+        drawAllHulls(prevHulls);
+
         my_point p;
         my_point next;
 
@@ -184,7 +206,7 @@ static void drawSubHulls(const Points &lHull, const Points &rHull)
  *      left and right are disjoint hulls.
  *      left and right are sorted by x-coordinate relative to each other.
  * Notes:
- *      Draws searching process in GREEN.
+ *      Draws searching process in ORANGE.
  ************************/
 static ptPair getUpperBridge(const Points &left, const Points &right)
 {
@@ -216,7 +238,7 @@ static ptPair getUpperBridge(const Points &left, const Points &right)
                 done = true;
                 
                 /* Initial search line */
-                drawBridgeLine(left[i], right[j], UPPER);
+                drawBridgeLine(left[i], right[j], SEARCH);
                 
                 /* Check if we need to move counterclockwise on left hull */
                 while (cross_product(right[j], left[i], 
@@ -224,7 +246,7 @@ static ptPair getUpperBridge(const Points &left, const Points &right)
                         drawBridgeLine(left[i], right[j], ERASED);
                         i = (i - 1 + lSize) % lSize;
                         done = false;
-                        drawBridgeLine(left[i], right[j], UPPER);
+                        drawBridgeLine(left[i], right[j], SEARCH);
                 }
                 
                 /* Check if we need to move counterclockwise on right hull */
@@ -233,7 +255,7 @@ static ptPair getUpperBridge(const Points &left, const Points &right)
                         drawBridgeLine(left[i], right[j], ERASED);
                         j = (j + 1) % rSize;
                         done = false;
-                        drawBridgeLine(left[i], right[j], UPPER);
+                        drawBridgeLine(left[i], right[j], SEARCH);
                 }
                 
                 drawBridgeLine(left[i], right[j], ERASED);
@@ -262,11 +284,11 @@ static ptPair getLowerBridge(const Points &left, const Points &right)
         int lSize = left.size();
         int rSize = right.size();
         
-        // Start at rightmost point of left hull and leftmost of right hull
+        /* Start at rightmost of left hull and leftmost of right hull */
         int i = 0;
         int j = 0;
         
-        // Find rightmost point in left hull (maximum x)
+        /* Find rightmost in left hull (max x) */
         for (int k = 1; k < lSize; k++) {
                 if (left[k].x > left[i].x || 
                     (left[k].x == left[i].x && left[k].y < left[i].y)) {
@@ -274,7 +296,7 @@ static ptPair getLowerBridge(const Points &left, const Points &right)
                 }
         }
         
-        // Find leftmost point in right hull (minimum x)
+        /* Find leftmost in right hull (min x) */
         for (int k = 1; k < rSize; k++) {
                 if (right[k].x < right[j].x || 
                     (right[k].x == right[j].x && right[k].y < right[j].y)) {
@@ -286,24 +308,25 @@ static ptPair getLowerBridge(const Points &left, const Points &right)
         while (!done) {
                 done = true;
                 
-                drawBridgeLine(left[i], right[j], LOWER);
+                /* Initial search line */
+                drawBridgeLine(left[i], right[j], SEARCH);
                 
-                // Check if we need to move clockwise on left hull
+                /* Check if we need to move clockwise on left hull */
                 while (cross_product(right[j], left[i], 
                                     left[(i + 1) % lSize]) < 0) {
                         drawBridgeLine(left[i], right[j], ERASED);
                         i = (i + 1) % lSize;
                         done = false;
-                        drawBridgeLine(left[i], right[j], LOWER);
+                        drawBridgeLine(left[i], right[j], SEARCH);
                 }
                 
-                // Check if we need to move clockwise on right hull
+                /* Check if we need to move clockwise on right hull */
                 while (cross_product(left[i], right[j], 
                                     right[(j - 1 + rSize) % rSize]) > 0) {
                         drawBridgeLine(left[i], right[j], ERASED);
                         j = (j - 1 + rSize) % rSize;
                         done = false;
-                        drawBridgeLine(left[i], right[j], LOWER);
+                        drawBridgeLine(left[i], right[j], SEARCH);
                 }
                 
                 drawBridgeLine(left[i], right[j], ERASED);
@@ -332,7 +355,7 @@ static void drawBridgeLine(const my_point &p1, const my_point &p2, int color)
         en47_draw_segment(p1.x, p1.y, p2.x, p2.y, color);
         
         /* Wait if searching, don't wait if erasing */
-        if (color == UPPER || color == LOWER) {
+        if (color == SEARCH) {
                 en47_wait(WAIT);
         }
 }
@@ -388,6 +411,7 @@ static Points merge(const Points &lHull, const Points &rHull,
  *
  * Parameters:
  *      const Points &hull:     A merged convex hull.
+ *      const Points &allPts:   The original set of points.
  * Returns:
  *      None.
  * Expects:
@@ -395,8 +419,12 @@ static Points merge(const Points &lHull, const Points &rHull,
  * Notes:
  *      Draws hulls in BLACK.
  ************************/
-static void drawMergedHull(const Points &hull)
+static void drawMergedHull(const Points &hull, const Points &allPts,
+                           const vector<Points> &prevHulls)
 {
+        drawPoints(allPts);
+        drawAllHulls(prevHulls);
+
         my_point p;
         my_point next;
         for (size_t i = 0; i < hull.size(); i++) {
@@ -424,4 +452,48 @@ static void drawMergedHull(const Points &hull)
 static int cross_product(my_point o, my_point a, my_point b)
 {
     return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+}
+
+/******** drawPoints ********
+ *
+ * Draws all points in the point set.
+ *
+ * Parameters:
+ *      const Points &pts:      The set of points to draw.
+ * Returns:
+ *      None.
+ * Expects:
+ *      None.
+ * Notes:
+ *      Draws points in BLACK.
+ ************************/
+static void drawPoints(const Points &pts)
+{
+        for (size_t i = 0; i < pts.size(); i++) {
+                en47_draw_point(pts[i].x, pts[i].y, BLACK);
+        }
+}
+
+/******** drawAllHulls ********
+ *
+ * Draws all previous sub-hulls.
+ *
+ * Parameters:
+ *      const vector<Points> &hulls:    Vector of all previous hulls.
+ * Returns:
+ *      None.
+ * Expects:
+ *      None.
+ * Notes:
+ *      Draws all hulls in black.
+ ************************/
+static void drawAllHulls(const vector<Points> &hulls)
+{
+        for (const Points &hull : hulls) {
+                for (size_t i = 0; i < hull.size(); i++) {
+                        const my_point &p = hull[i];
+                        const my_point &next = hull[(i + 1) % hull.size()];
+                        en47_draw_segment(p.x, p.y, next.x, next.y, STORED);
+                }
+        }
 }
