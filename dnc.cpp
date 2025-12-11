@@ -190,8 +190,26 @@ static ptPair getUpperBridge(const Points &left, const Points &right)
 {
         int lSize = left.size();
         int rSize = right.size();
-        int i = lSize - 1;
+        
+        /* Start at rightmost of left hull and leftmost of right hull */
+        int i = 0;
         int j = 0;
+        
+        /* Find rightmost in left hull (max x) */
+        for (int k = 1; k < lSize; k++) {
+                if (left[k].x > left[i].x || 
+                    (left[k].x == left[i].x && left[k].y > left[i].y)) {
+                        i = k;
+                }
+        }
+        
+        /* Find leftmost in right hull (min x) */
+        for (int k = 1; k < rSize; k++) {
+                if (right[k].x < right[j].x || 
+                    (right[k].x == right[j].x && right[k].y > right[j].y)) {
+                        j = k;
+                }
+        }
         
         bool done = false;
         while (!done) {
@@ -199,27 +217,28 @@ static ptPair getUpperBridge(const Points &left, const Points &right)
                 
                 /* Initial search line */
                 drawBridgeLine(left[i], right[j], UPPER);
-
-                /* Advance left index if not tangent */
-                while (lSize > 1 && cross_product(right[j], left[i],
-                                     left[(i + 1) % lSize]) >= 0) {
+                
+                /* Check if we need to move counterclockwise on left hull */
+                while (cross_product(right[j], left[i], 
+                                     left[(i - 1 + lSize) % lSize]) > 0) {
                         drawBridgeLine(left[i], right[j], ERASED);
-                        i = (i + 1) % lSize;
-                        done = false;
-                        drawBridgeLine(left[i], right[j], UPPER);
-                }
-                /* Advance right index if not tangent */
-                while (rSize > 1 && cross_product(left[i], right[j],
-                                     right[(j - 1 + rSize) % rSize]) <= 0) {
-                        drawBridgeLine(left[i], right[j], ERASED);
-                        j = (j - 1 + rSize) % rSize;
+                        i = (i - 1 + lSize) % lSize;
                         done = false;
                         drawBridgeLine(left[i], right[j], UPPER);
                 }
                 
-                /* Clean up */
+                /* Check if we need to move counterclockwise on right hull */
+                while (cross_product(left[i], right[j], 
+                                     right[(j + 1) % rSize]) < 0) {
+                        drawBridgeLine(left[i], right[j], ERASED);
+                        j = (j + 1) % rSize;
+                        done = false;
+                        drawBridgeLine(left[i], right[j], UPPER);
+                }
+                
                 drawBridgeLine(left[i], right[j], ERASED);
         }
+        
         return {i, j};
 }
 
@@ -241,37 +260,55 @@ static ptPair getUpperBridge(const Points &left, const Points &right)
 static ptPair getLowerBridge(const Points &left, const Points &right)
 {
         int lSize = left.size();
-        int rSize = right.size();        
-        int i = lSize - 1;
+        int rSize = right.size();
+        
+        // Start at rightmost point of left hull and leftmost of right hull
+        int i = 0;
         int j = 0;
+        
+        // Find rightmost point in left hull (maximum x)
+        for (int k = 1; k < lSize; k++) {
+                if (left[k].x > left[i].x || 
+                    (left[k].x == left[i].x && left[k].y < left[i].y)) {
+                        i = k;
+                }
+        }
+        
+        // Find leftmost point in right hull (minimum x)
+        for (int k = 1; k < rSize; k++) {
+                if (right[k].x < right[j].x || 
+                    (right[k].x == right[j].x && right[k].y < right[j].y)) {
+                        j = k;
+                }
+        }
         
         bool done = false;
         while (!done) {
                 done = true;
                 
-                /* Initial search line */
                 drawBridgeLine(left[i], right[j], LOWER);
                 
-                /* Advance left index if not tangent */
-                while (lSize > 1 && cross_product(right[j], left[i],
-                                     left[(i - 1 + lSize) % lSize]) <= 0) {
+                // Check if we need to move clockwise on left hull
+                while (cross_product(right[j], left[i], 
+                                    left[(i + 1) % lSize]) < 0) {
                         drawBridgeLine(left[i], right[j], ERASED);
-                        i = (i - 1 + lSize) % lSize;
-                        done = false;
-                        drawBridgeLine(left[i], right[j], LOWER);
-                }
-                /* Advance right index if not tangent */
-                while (rSize > 1 && cross_product(left[i], right[j],
-                                     right[(j + 1) % rSize]) >= 0) {
-                        drawBridgeLine(left[i], right[j], ERASED);
-                        j = (j + 1) % rSize;
+                        i = (i + 1) % lSize;
                         done = false;
                         drawBridgeLine(left[i], right[j], LOWER);
                 }
                 
-                /* Clean up */
+                // Check if we need to move clockwise on right hull
+                while (cross_product(left[i], right[j], 
+                                    right[(j - 1 + rSize) % rSize]) > 0) {
+                        drawBridgeLine(left[i], right[j], ERASED);
+                        j = (j - 1 + rSize) % rSize;
+                        done = false;
+                        drawBridgeLine(left[i], right[j], LOWER);
+                }
+                
                 drawBridgeLine(left[i], right[j], ERASED);
         }
+        
         return {i, j};
 }
 
@@ -322,20 +359,24 @@ static Points merge(const Points &lHull, const Points &rHull,
 {
         Points merged;
 
-        /* Traverse right hull (upper -> lower bridge, CW along outer edge) */
+        /* Start at upper bridge on right hull */
         int ind = upper.second;
-        merged.push_back(rHull[ind]);
-        while (ind != lower.second) {
-                ind = (ind + 1) % rHull.size();
+        
+        /* Traverse right hull (upper -> lower bridge, CW) */
+        while (true) {
                 merged.push_back(rHull[ind]);
+                if (ind == lower.second) break;
+                ind = (ind + 1) % rHull.size();
         }
         
-        /* Traverse left hull (lower -> upper bridge, CW along outer edge) */
+        /* Continue from lower bridge on left hull */
         ind = lower.first;
-        merged.push_back(lHull[ind]);
-        while (ind != upper.first) {
-                ind = (ind + 1) % lHull.size();
+        
+        /* Traverse left hull (lower -> upper bridge, CW) */
+        while (true) {
                 merged.push_back(lHull[ind]);
+                if (ind == upper.first) break;
+                ind = (ind + 1) % lHull.size();
         }
 
         return merged;
