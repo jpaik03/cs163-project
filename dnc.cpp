@@ -32,7 +32,7 @@ static void drawMergedHull(const Points &hull);
 static int cross_product(my_point o, my_point a, my_point b);
 
 /* Define constants */
-const int WAIT = 100;
+const int WAIT = 10;
 #define SUBHULL BLACK
 #define UPPER GREEN
 #define LOWER ORANGE
@@ -201,16 +201,16 @@ static ptPair getUpperBridge(const Points &left, const Points &right)
                 drawBridgeLine(left[i], right[j], UPPER);
 
                 /* Advance left index if not tangent */
-                while (cross_product(right[j], left[i],
-                                     left[(i + 1) % lSize]) > 0) {
+                while (lSize > 1 && cross_product(right[j], left[i],
+                                     left[(i + 1) % lSize]) >= 0) {
                         drawBridgeLine(left[i], right[j], ERASED);
                         i = (i + 1) % lSize;
                         done = false;
                         drawBridgeLine(left[i], right[j], UPPER);
                 }
                 /* Advance right index if not tangent */
-                while (cross_product(left[i], right[j],
-                                     right[(j - 1 + rSize) % rSize]) < 0) {
+                while (rSize > 1 && cross_product(left[i], right[j],
+                                     right[(j - 1 + rSize) % rSize]) <= 0) {
                         drawBridgeLine(left[i], right[j], ERASED);
                         j = (j - 1 + rSize) % rSize;
                         done = false;
@@ -253,16 +253,16 @@ static ptPair getLowerBridge(const Points &left, const Points &right)
                 drawBridgeLine(left[i], right[j], LOWER);
                 
                 /* Advance left index if not tangent */
-                while (cross_product(right[j], left[i],
-                                     left[(i - 1 + lSize) % lSize]) < 0) {
+                while (lSize > 1 && cross_product(right[j], left[i],
+                                     left[(i - 1 + lSize) % lSize]) <= 0) {
                         drawBridgeLine(left[i], right[j], ERASED);
                         i = (i - 1 + lSize) % lSize;
                         done = false;
                         drawBridgeLine(left[i], right[j], LOWER);
                 }
                 /* Advance right index if not tangent */
-                while (cross_product(left[i], right[j],
-                                     right[(j + 1) % rSize]) > 0) {
+                while (rSize > 1 && cross_product(left[i], right[j],
+                                     right[(j + 1) % rSize]) >= 0) {
                         drawBridgeLine(left[i], right[j], ERASED);
                         j = (j + 1) % rSize;
                         done = false;
@@ -322,20 +322,20 @@ static Points merge(const Points &lHull, const Points &rHull,
 {
         Points merged;
 
-        /* Upper bridge -> lower bridge (CW on left hull) */
-        int ind = upper.first;
-        merged.push_back(lHull[ind]);
-        while (ind != lower.first) {
-                ind = (ind + 1) % lHull.size();
-                merged.push_back(lHull[ind]);
-        }
-        
-        /* Lower bridge -> upper bridge (CW on right hull) */
-        ind = lower.second;
+        /* Traverse right hull (upper -> lower bridge, CW along outer edge) */
+        int ind = upper.second;
         merged.push_back(rHull[ind]);
-        while (ind != upper.second) {
+        while (ind != lower.second) {
                 ind = (ind + 1) % rHull.size();
                 merged.push_back(rHull[ind]);
+        }
+        
+        /* Traverse left hull (lower -> upper bridge, CW along outer edge) */
+        ind = lower.first;
+        merged.push_back(lHull[ind]);
+        while (ind != upper.first) {
+                ind = (ind + 1) % lHull.size();
+                merged.push_back(lHull[ind]);
         }
 
         return merged;
