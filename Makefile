@@ -23,13 +23,14 @@ LDFLAGS  = -L$(LEDA_PATH)
 # -lm:    Standard math library
 LIBS     = -lleda -lX11 -lm
 
-VIS_OBJ   = en47_vis.o
-
-dnc_ch: project.o
-	$(CXX) $(CXXFLAGS) -o dnc_ch project.o $(VIS_OBJ) $(LDFLAGS) $(LIBS)
+dnc_ch: project.o dnc.o
+	$(CXX) $(CXXFLAGS) -o dnc_ch project.o dnc.o en47_vis.o $(LDFLAGS) $(LIBS)
 	
 project.o: project.cpp en47_vis_txt.h
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c project.cpp
+
+dnc.o: dnc.cpp dnc.h en47_vis_txt.h
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c dnc.cpp
 
 clean: 
 	rm -f dnc_ch project.o

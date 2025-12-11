@@ -20,8 +20,16 @@ Testing
 
 What I learned
 
-Usage
-
-Open PuTTY
-Connection > SSH > X11 > Turn on Enable X11 forwarding
-use leda61
+Usage (Windows 11)
+  - Requirements
+    - PuTTY
+    - Xming
+    - Xming fonts
+  - Instructions
+    - Open PuTTY
+    - Connection > SSH > X11 > Turn on Enable X11 forwarding
+    - Input
+      >use leda61
+      >make
+      >./dnc_ch points.txt
+      

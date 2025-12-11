@@ -9,25 +9,24 @@
  *      TODO: Further description
  */
 
- /* Standard c++ Includes */
- #include <iostream>
- #include <fstream>
- #include <vector>
- #include <algorithm>
- #include <limits>
- 
- /* Professor Souvaine's LEDA library */
- #include "en47_vis_txt.h"
+/* Standard c++ Includes */
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <limits>
+#include "assert.h"
+
+/* Professor Souvaine's LEDA library */
+#include "en47_vis_txt.h"
+
+#include "dnc.h"
 
 using namespace std;
 
 /* Function declarations */
 void readInput(string inputFile, vector<my_point> &pts);
-void sortPoints(vector<my_point> &pts);
 void printPoints(vector<my_point> &pts);
 void display(const vector<my_point> &pts, const vector<my_point> &hull);
-
-/* Define constants */
 
 int main(int argc, char *argv[])
 {
@@ -40,17 +39,22 @@ int main(int argc, char *argv[])
                 exit(EXIT_FAILURE);
         }
 
-        // TODO: Algorithm Implementation
-        sortPoints(pts);
-
-        cout << "Points:\n";
+        cout << "Points (before sort):\n";
         printPoints(pts);
         cout << pts.size() << " points read from file.\n";
 
-        /* Visualization */
-        // TODO: Change second points to hull once I find the hull
-        display(pts, pts);
-        cout << "Click the window to exit." << endl;
+        /* Run algorithm and display */
+        display(pts, {});
+        vector<my_point> hull = dnc(pts);
+
+        cout << "Points (after sort):\n";
+        printPoints(pts);
+        cout << "Hull size: " << hull.size() << "\n";
+
+        /* Final Display */
+        en47_clear();
+        display(pts, hull);
+        
         en47_mouse_wait();
         en47_close();
 
@@ -93,32 +97,6 @@ void readInput(string inputFile, vector<my_point> &pts)
         }
 
         infile.close();
-}
-
-/******** sortPoints ********
- *
- * Sorts a vector of my_points by ascending x-coordinate, breaking ties by
- * ascending y-coordinate.
- *
- * Parameters:
- *      vector<my_point> &pts:  Address to a vector of my_points.
- * Returns:
- *      None.
- * Expects:
- *      None.
- * Notes:
- *      None.
- ************************/
-void sortPoints(vector<my_point> &pts)
-{
-        sort(pts.begin(), pts.end(), [](const my_point &a, const my_point &b) {
-                /* Sort by ascending x-coordinate */
-                if (a.x != b.x) {
-                        return a.x < b.x;
-                }
-                /* Break ties by sort by ascending y-coordinate */
-                return a.y < b.y;
-        });
 }
 
 /******** display ********
@@ -193,12 +171,18 @@ void display(const vector<my_point> &pts, const vector<my_point> &hull)
  * Returns:
  *      None.
  * Expects:
- *      None.
+ *      pts is not empty.
  * Notes:
+ *      Throws a CRE if pts is empty.
  *      This is for testing purposes only.
  ************************/
 void printPoints(vector<my_point> &pts)
 {
+        if (pts.empty()) {
+                cerr << "No points given.\n";
+                assert(!pts.empty());
+        }
+
         my_point p;
         for (size_t i = 0; i < pts.size(); i++) {
                 p = pts[i];
