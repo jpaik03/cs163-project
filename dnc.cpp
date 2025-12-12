@@ -85,7 +85,7 @@ Points dnc(Points &pts)
  * Expects:
  *      None.
  * Notes:
- *      Uses std::sort to sort points in O(nlogn) time.
+ *      Uses std::sort to sort points in O(n log n) time.
  ************************/
 static void sortPoints(Points &pts)
 {
@@ -296,7 +296,7 @@ static Points merge(const Points &lHull, const Points &rHull,
                lower.first < (int) lHull.size());
         assert(upper.second < (int) rHull.size() &&
                lower.second < (int) rHull.size());
-               
+
         Points merged;
 
         /* Start at upper bridge on right hull */

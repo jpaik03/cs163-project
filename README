@@ -8,28 +8,81 @@
  */
 
 Help Received
-  - https://cplusplus.com/reference/vector/vector/
-  - 
+- Course file: convex_hull2_handout.dvi
+- Inspiration from: https://www.geeksforgeeks.org/dsa/convex-hull-using-divid
+  e-and-conquer-algorithm/
+- Visualization Library: en47_vis_txt.h (provided by Professor Souvaine) to
+  handle window creation, point plotting, and line segment drawing
+- Random number pair generator: https://numbergenerator.org/numberlistrandomize
+  r#!numbers=2&lines=200&range=1-500&unique=true&unique_combinations=true&order
+  _matters=false&csv=&del=&oddeven=&oddqty=0&sorted=false&addfilters=
 
-Architecture
+Description
+- This is a semester-long project for CS 163 at Tufts University, taught by
+  Professor Diane Souvaine.
+- This program implements the Divide and Conquer convex hull algorithm for a
+  set of 2D points in O(n log n) time. The implementation includes a
+  step-by-step visualization using a LEDA library provided by Professor
+  Souvaine, allowing the user to view the recursive construction of sub-hulls
+  and the bridge finding process during the merge steps.
+
+Algorithm Overview
+- Pre-processing: Points are sorted by x-coordinate (breaking ties with
+  y-coordinates).
+- Divide: The set of points is recursively split into left and right subsets
+  until a base case (n <= 1) is reached.
+- Conquer: Convex hulls are constructed for the left and right subsets
+  recursively.
+- Merge: The two sub-hulls are merged into a single hull by finding the upper
+  bridge and lower bridge.
+- The merge step is visualized in orange (searching for bridges) and black
+  (finalized sub-hulls).
+
+Data Structures
+- my_point: A struct containing integers x, y, and an ID.
+- Points: A std::vector<my_point> used to store hulls and point sets.
+- ptPair: A std::pair<int, int> used to store the indices of points forming a
+  bridge.
 
 Files
-  - project.cpp:
+- Makefile: Compilation rules linking the LEDA library, X11, and math library.
+- project.cpp: The main driver. It handles file I/O to read points.txt, sets up
+  the visualization window, and calls the solver.
+- dnc.h: Header file containing function declarations for the solver.
+- dnc.cpp: Contains the core logic.
+- en47_vis_txt.h: The text-based header for the LEDA visualization library.
+- en47_vis.o: Required to run the code.
+- points.txt: A sample input file containing points.
+- README
 
 Testing
+- The program was tested using the points.txt dataset containing randomly
+  generated points distributed across the coordinate plane.
+- The visualization allows for visual confirmation that "interior" points are
+  discarded correctly during the merge process and that the bridges correctly
+  connect the extremal points of the left and right sub-hulls.
 
 What I learned
+- Implementing crossProduct was essential for the bridge-finding logic. I ran
+  into issues that caused some points be not be contained, leading to massive
+  headaches and debugging. I had to strictly define "clockwise" and
+  "counter-clockwise" turns to determine if a bridge candidate needed to move
+  index positions on the sub-hulls.
+- Visualizing a recursive algorithm is challenging. I passed lists like
+  prevHulls down through the recursion stack so that previously computed hulls
+  remain visible in order to visualize each step of the algorithm.
+- The merge step dominates the operation count, which aligned with the O(n)
+  merge time, leading to the overall time complexity of O(n log n).
 
 Usage (Windows 11)
-  - Requirements
-    - PuTTY
-    - Xming
-    - Xming fonts
-  - Instructions
-    - Open PuTTY
-    - Connection > SSH > X11 > Turn on Enable X11 forwarding
-    - Input
-      >use leda61
-      >make
-      >./dnc_ch points.txt
-      
+- Requirements
+  - PuTTY
+  - Xming
+  - Xming fonts
+- Instructions
+  - Open PuTTY
+  - Connection > SSH > X11 > Turn on Enable X11 forwarding
+  - Input into Terminal:
+    >use leda61
+    >make
+    >./dnc_ch points.txt
