@@ -25,6 +25,8 @@ Description
   step-by-step visualization using a LEDA library provided by Professor
   Souvaine, allowing the user to view the recursive construction of sub-hulls
   and the bridge finding process during the merge steps.
+- Note: This program does NOT handle three or more collinear points. The convex
+  hull may output incorrectly in this case.
 
 Algorithm Overview
 - Pre-processing: Points are sorted by x-coordinate (breaking ties with
